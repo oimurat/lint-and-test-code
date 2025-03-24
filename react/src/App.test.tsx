@@ -6,11 +6,11 @@ import App from './App';
  * サンプルテスト
  */
 describe('サンプルテスト', () => {
-    test('[異常系]サンプルテスト', async () => {
+    test('[正常系]サンプルテスト', async () => {
         // 実行
         render(<App />);
 
         // 検証
-        expect(screen.getByText('React')).toBeInTheDocument();
+        expect(screen.getByText('Vite')).toBeInTheDocument();
     });
 });
