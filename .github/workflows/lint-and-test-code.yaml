@@ -135,3 +135,30 @@ jobs:
               run: |
                   cd react
                   npm run test
+
+    backend-test:
+        name: Backend Test
+        needs: filter-files
+        if: github.event_name == 'pull_request' && needs.filter-files.outputs.backend == 'true'
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout repository # リポジトリをチェックアウト
+              uses: actions/checkout@v4
+
+            - name: Set up Python # Python をセットアップ
+              uses: actions/setup-python@v4
+              with:
+                  python-version: "3.12"
+                  cache: "pip"
+
+            - name: Install dependencies # 依存関係をインストール
+              run: |
+                  cd fastapi
+                  python -m pip install --upgrade pip
+                  pip install --no-cache-dir pytest
+
+            - name: Run pytest # pytestでテストを実行
+              run: |
+                  cd fastapi
+                  pytest .
