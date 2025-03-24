@@ -106,3 +106,32 @@ jobs:
               run: |
                   cd fastapi
                   mypy .
+
+    frontend-test:
+        name: Frontend Test
+        needs: filter-files
+        if: github.event_name == 'pull_request' && needs.filter-files.outputs.frontend == 'true'
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout repository # リポジトリをチェックアウト
+              uses: actions/checkout@v4
+
+            - name: Set up Node.js # Node.js をセットアップ
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache-dependency-path: react/package-lock.json # react内のロックファイルをキャッシュ
+
+            - name: Clear npm cache # npm キャッシュをクリア
+              run: npm cache clean --force
+
+            - name: Install dependencies # 依存関係をインストール
+              run: |
+                  cd react
+                  npm install
+
+            - name: Run tests # テストを実行
+              run: |
+                  cd react
+                  npm run test
