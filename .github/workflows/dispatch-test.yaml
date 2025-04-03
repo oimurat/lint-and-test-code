@@ -1,0 +1,40 @@
+name: dispatch-test # ワークフロー名を決定
+
+# トリガーの設定
+on:
+    repository_dispatch:
+        types:
+            - frontend-lint
+
+jobs:
+    frontend-lint:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout repository # リポジトリをチェックアウト
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0 # フルクローンする
+
+            - name: Set up Node.js # Node.js をセットアップ
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache-dependency-path: react/package-lock.json # react内のロックファイルをキャッシュ
+
+            - name: Clear npm cache # npm キャッシュをクリア
+              run: npm cache clean --force
+
+            - name: Install dependencies # 依存関係をインストール
+              run: |
+                  cd react
+                  npm install
+
+            - name: Run Prettier check # Prettierでコードフォーマットをチェック
+              run: |
+                  cd react
+                  npm run prettier -- --check .
+
+            - name: Run ESLint # ESLintで静的解析を実施
+              run: |
+                  cd react
+                  npm run lint -- .

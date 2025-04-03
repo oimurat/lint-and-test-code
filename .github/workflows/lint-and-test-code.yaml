@@ -1,0 +1,164 @@
+name: lint-and-test-code # ワークフロー名を決定
+
+# トリガーの設定
+on:
+    pull_request: # プルリクエストが発生したときにトリガー
+        branches:
+            - develop
+            - main
+    push: # プッシュ(マージ)が発生したときにトリガー
+        branches:
+            - develop
+            - main
+
+# ジョブの設定
+jobs:
+    filter-files: # 変更されたファイルを判定するジョブ
+        name: Determine Changed Files
+        runs-on: ubuntu-latest
+        outputs:
+            frontend: ${{ steps.filter.outputs.frontend }} # フロントエンドの変更時のフラグ
+            backend: ${{ steps.filter.outputs.backend }} # バックエンドの変更時のフラグ
+        steps:
+            - name: Checkout repository # リポジトリをチェックアウト
+              uses: actions/checkout@v4
+
+            - name: Determine changed files # 変更されたファイルを判定
+              id: filter
+              uses: dorny/paths-filter@v3
+              with:
+                  filters: |
+                      frontend:
+                        - 'react/**/*.ts'
+                        - 'react/**/*.tsx'
+                      backend:
+                        - 'fastapi/**/*.py'
+
+    frontend-format-lint:
+        name: Frontend Format & Lint
+        needs: filter-files
+        if: github.event_name == 'pull_request' && needs.filter-files.outputs.frontend == 'true'
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout repository # リポジトリをチェックアウト
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0 # フルクローンする
+
+            - name: Set up Node.js # Node.js をセットアップ
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache-dependency-path: react/package-lock.json # react内のロックファイルをキャッシュ
+
+            - name: Clear npm cache # npm キャッシュをクリア
+              run: npm cache clean --force
+
+            - name: Install dependencies # 依存関係をインストール
+              run: |
+                  cd react
+                  npm install
+
+            - name: Run Prettier check # Prettierでコードフォーマットをチェック
+              run: |
+                  cd react
+                  npm run prettier -- --check .
+
+            - name: Run ESLint # ESLintで静的解析を実施
+              run: |
+                  cd react
+                  npm run lint -- .
+
+    backend-format-lint:
+        name: Backend Format & Lint
+        needs: filter-files
+        if: github.event_name == 'pull_request' && needs.filter-files.outputs.backend == 'true'
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout repository # リポジトリをチェックアウト
+              uses: actions/checkout@v4
+
+            - name: Set up Python # Python をセットアップ
+              uses: actions/setup-python@v4
+              with:
+                  python-version: "3.12"
+                  cache: "pip"
+
+            - name: Install dependencies # 依存関係をインストール
+              run: |
+                  cd fastapi
+                  python -m pip install --upgrade pip
+                  pip install -r requirements.txt
+
+            - name: Run Ruff Format # Ruffでコードフォーマットをチェック
+              run: |
+                  cd fastapi
+                  ruff format --check .
+
+            - name: Run Ruff Lint # Ruffで静的解析を実施
+              run: |
+                  cd fastapi
+                  ruff check .
+
+            - name: Run Mypy # Mypyで型チェックを実施
+              run: |
+                  cd fastapi
+                  mypy .
+
+    frontend-test:
+        name: Frontend Test
+        needs: filter-files
+        if: github.event_name == 'pull_request' && needs.filter-files.outputs.frontend == 'true'
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout repository # リポジトリをチェックアウト
+              uses: actions/checkout@v4
+
+            - name: Set up Node.js # Node.js をセットアップ
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache-dependency-path: react/package-lock.json # react内のロックファイルをキャッシュ
+
+            - name: Clear npm cache # npm キャッシュをクリア
+              run: npm cache clean --force
+
+            - name: Install dependencies # 依存関係をインストール
+              run: |
+                  cd react
+                  npm install
+
+            - name: Run tests # テストを実行
+              run: |
+                  cd react
+                  npm run test
+
+    backend-test:
+        name: Backend Test
+        needs: filter-files
+        if: github.event_name == 'pull_request' && needs.filter-files.outputs.backend == 'true'
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout repository # リポジトリをチェックアウト
+              uses: actions/checkout@v4
+
+            - name: Set up Python # Python をセットアップ
+              uses: actions/setup-python@v4
+              with:
+                  python-version: "3.12"
+                  cache: "pip"
+
+            - name: Install dependencies # 依存関係をインストール
+              run: |
+                  cd fastapi
+                  python -m pip install --upgrade pip
+                  pip install -r requirements.txt
+
+            - name: Run pytest # pytestでテストを実行
+              run: |
+                  cd fastapi
+                  pytest .
